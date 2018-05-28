@@ -13,7 +13,8 @@ BUILD_ROOT=/var/kernel_build
 BUILD_CACHE=$BUILD_ROOT/cache
 ARM_TOOLS=$BUILD_CACHE/tools
 LINUX_KERNEL=$BUILD_CACHE/linux-kernel
-LINUX_KERNEL_COMMIT=f70eae405b5d75f7c41ea300b9f790656f99a203 # Linux 4.14.34
+LINUX_KERNEL_COMMIT=e8e892a9196be7752844810fa0c9b73c801ef7eb   # Linux 4.9.80-re4son
+# LINUX_KERNEL_COMMIT=f70eae405b5d75f7c41ea300b9f790656f99a203 # Linux 4.14.34
 # LINUX_KERNEL_COMMIT=be97febf4aa42b1d019ad24e7948739da8557f66 # Linux 4.9.80
 # LINUX_KERNEL_COMMIT=6820d0cbec64cfee481b961833feffec8880111e # Linux 4.9.59
 # LINUX_KERNEL_COMMIT=04c8e47067d4873c584395e5cb260b4f170a99ea # Linux 4.4.50
@@ -54,6 +55,8 @@ CCPREFIX["rpi2_3"]=$ARM_TOOLS/$X64_CROSS_COMPILE_CHAIN/bin/arm-linux-gnueabihf-
 declare -A ORIGDEFCONFIG
 ORIGDEFCONFIG["rpi1"]=bcmrpi_defconfig
 ORIGDEFCONFIG["rpi2_3"]=bcm2709_defconfig
+#ORIGDEFCONFIG["rpi1"]=re4son_pi1_defconfig
+#ORIGDEFCONFIG["rpi2_3"]=re4son_pi2_defconfig
 
 declare -A DEFCONFIG
 DEFCONFIG["rpi1"]=rpi1_docker_defconfig
@@ -85,13 +88,14 @@ function clone_or_update_repo_for () {
     rm -rf $repo_path
   fi
   if [ -d ${repo_path}/.git ]; then
+    sudo chown -R $BUILD_USER:$BUILD_GROUP ${repo_path}/.git # For Reprovision
     pushd $repo_path
     git reset --hard HEAD
     git pull
     popd
   else
     echo "Cloning $repo_path with commit $repo_commit"
-    git clone $repo_url $repo_path
+    git clone $repo_url $repo_path --depth 1
     if [ ! -z "${repo_commit}" ]; then
       cd $repo_path && git checkout -qf ${repo_commit}
     fi
@@ -105,7 +109,7 @@ function setup_arm_cross_compiler_toolchain () {
 
 function setup_linux_kernel_sources () {
   echo "### Check if Raspberry Pi Linux Kernel repository at ${LINUX_KERNEL} is still up to date"
-  clone_or_update_repo_for 'https://github.com/raspberrypi/linux.git' $LINUX_KERNEL $LINUX_KERNEL_COMMIT
+  clone_or_update_repo_for 'https://github.com/nethunteros/re4son-raspberrypi-linux.git' $LINUX_KERNEL $LINUX_KERNEL_COMMIT
   echo "### Cleaning .version file for deb packages"
   rm -f $LINUX_KERNEL/.version
 }
@@ -131,8 +135,8 @@ create_kernel_for () {
 
   cd $LINUX_KERNEL
 
-  # add kernel branding for HypriotOS
-  sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION = -hypriotos/g' Makefile
+  # add kernel branding for kali
+  sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION = -kali/g' Makefile
 
   # save git commit id of this build
   local KERNEL_COMMIT=`git rev-parse HEAD`
@@ -143,7 +147,7 @@ create_kernel_for () {
 
   # copy kernel configuration file over
   cp $LINUX_KERNEL/arch/arm/configs/${ORIGDEFCONFIG[${PI_VERSION}]} $LINUX_KERNEL/arch/arm/configs/${DEFCONFIG[${PI_VERSION}]}
-  cat $LINUX_KERNEL_CONFIGS/docker_delta_defconfig >> $LINUX_KERNEL/arch/arm/configs/${DEFCONFIG[${PI_VERSION}]}
+  cat $LINUX_KERNEL_CONFIGS/kali_delta_defconfig >> $LINUX_KERNEL/arch/arm/configs/${DEFCONFIG[${PI_VERSION}]}
 
   echo "### building kernel"
   mkdir -p $BUILD_RESULTS/$PI_VERSION

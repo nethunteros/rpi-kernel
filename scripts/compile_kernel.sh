@@ -145,6 +145,9 @@ create_kernel_for () {
 
   # clean build artifacts
   make ARCH=arm clean
+  
+  # remove + from kernel version (https://stackoverflow.com/a/32699989)
+  touch .scmversion
 
   # copy kernel configuration file over
   cp $LINUX_KERNEL/arch/arm/configs/${ORIGDEFCONFIG[${PI_VERSION}]} $LINUX_KERNEL/arch/arm/configs/${DEFCONFIG[${PI_VERSION}]}

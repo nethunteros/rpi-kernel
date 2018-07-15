@@ -13,7 +13,7 @@ BUILD_ROOT=/var/kernel_build
 BUILD_CACHE=$BUILD_ROOT/cache
 ARM_TOOLS=$BUILD_CACHE/tools
 LINUX_KERNEL=$BUILD_CACHE/linux-kernel
-LINUX_KERNEL_COMMIT=8f0808f9241cbfd27ef5b96fc51a936b5e15d3fe # Linux 4.14.50-re4son
+LINUX_KERNEL_COMMIT=77297f0f1dde7bccadf7c972cba45548d4e6c5d0 # Linux 4.14.50-re4son
 # LINUX_KERNEL_COMMIT=23e8f07192d2ba4562bd967d8be986f538a7b21b # Linux 4.14.30-re4son
 # LINUX_KERNEL_COMMIT=e8e892a9196be7752844810fa0c9b73c801ef7eb # Linux 4.9.80-re4son
 # LINUX_KERNEL_COMMIT=f70eae405b5d75f7c41ea300b9f790656f99a203 # Linux 4.14.34
@@ -49,16 +49,18 @@ NEW_VERSION=`date +%Y%m%d-%H%M%S`
 BUILD_RESULTS=$BUILD_ROOT/results/kernel-$NEW_VERSION
 
 X64_CROSS_COMPILE_CHAIN=arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64
+V6_CROSS_COMPILE_CHAIN=arm-bcm2708/arm-bcm2708-linux-gnueabi
+V7_CROSS_COMPILE_CHAIN=arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian
 
 declare -A CCPREFIX
-CCPREFIX["rpi1"]=$ARM_TOOLS/$X64_CROSS_COMPILE_CHAIN/bin/arm-linux-gnueabihf-
-CCPREFIX["rpi2_3"]=$ARM_TOOLS/$X64_CROSS_COMPILE_CHAIN/bin/arm-linux-gnueabihf-
+CCPREFIX["rpi1"]=$ARM_TOOLS/$V6_CROSS_COMPILE_CHAIN/bin/arm-bcm2708-linux-gnueabi-
+CCPREFIX["rpi2_3"]=$ARM_TOOLS/$V7_CROSS_COMPILE_CHAIN/bin/arm-linux-gnueabihf-
 
 declare -A ORIGDEFCONFIG
-ORIGDEFCONFIG["rpi1"]=bcmrpi_defconfig
-ORIGDEFCONFIG["rpi2_3"]=bcm2709_defconfig
-#ORIGDEFCONFIG["rpi1"]=re4son_pi1_defconfig
-#ORIGDEFCONFIG["rpi2_3"]=re4son_pi2_defconfig
+#ORIGDEFCONFIG["rpi1"]=bcmrpi_defconfig
+#ORIGDEFCONFIG["rpi2_3"]=bcm2709_defconfig
+ORIGDEFCONFIG["rpi1"]=re4son_pi1_defconfig
+ORIGDEFCONFIG["rpi2_3"]=re4son_pi2_defconfig
 
 declare -A DEFCONFIG
 DEFCONFIG["rpi1"]=rpi1_docker_defconfig
@@ -168,6 +170,15 @@ create_kernel_for () {
     return
   fi
 
+  #4d hats specific (re4son)
+  if [ "$PI_VERSION" == "rpi1" ]; then
+    git checkout $LINUX_KERNEL/drivers/video/4d-hats/compress-v6.o
+  fi
+
+  if [ "$PI_VERSION" == "rpi2_3" ]; then
+   git checkout $LINUX_KERNEL/drivers/video/4d-hats/compress-v7.o
+  fi
+
   echo "### building kernel and deb packages"
   KBUILD_DEBARCH=armhf ARCH=arm CROSS_COMPILE=${CCPREFIX[${PI_VERSION}]} make ${DEFCONFIG[${PI_VERSION}]} deb-pkg -j$NUM_CPUS
 
@@ -223,6 +234,9 @@ function create_kernel_deb_packages () {
   for pi_version in ${!CCPREFIX[@]}; do
     cp $BUILD_RESULTS/$pi_version/${IMAGE_NAME[${pi_version}]} $NEW_KERNEL/boot
     cp -R $BUILD_RESULTS/$pi_version/modules/lib/modules/* $NEW_KERNEL/modules
+    # Copying additional tft overlays
+    cp -rf $SRC_DIR/boot/overlays/* $NEW_KERNEL/boot/overlays
+    cp -rf $SRC_DIR/dts/* $NEW_KERNEL/boot/overlays
   done
   echo "copying dtb files to $NEW_KERNEL/boot"
   cp $LINUX_KERNEL/arch/arm/boot/dts/bcm27*.dtb $NEW_KERNEL/boot
@@ -232,7 +246,7 @@ function create_kernel_deb_packages () {
   (cd $NEW_KERNEL/debian ; ./gen_bootloader_postinst_preinst.sh)
 
   dch -v ${NEW_VERSION} --package raspberrypi-firmware 'add Hypriot custom kernel'
-  debuild --no-lintian -ePATH=${PATH}:$ARM_TOOLS/$X64_CROSS_COMPILE_CHAIN/bin -b -aarmhf -us -uc
+  debuild --no-lintian -ePATH=${PATH}:$ARM_TOOLS/$X7_CROSS_COMPILE_CHAIN/bin -b -aarmhf -us -uc
   cp ../*.deb $BUILD_RESULTS
   if [[ ! -z $CIRCLE_ARTIFACTS ]]; then
     cp ../*.deb $CIRCLE_ARTIFACTS

@@ -36,7 +36,7 @@ Vagrant.configure(2) do |config|
     config.ssh.forward_agent = true
     config.vm.provision "shell", path: "scripts/provision.sh", privileged: false
     config.vm.provider "virtualbox" do |vb, override|
-       override.vm.box = "ubuntu/trusty64"
+       override.vm.box = "ubuntu/trusty32"
        # find out on which host os we are running
        host = RbConfig::CONFIG['host_os']
        vb.customize ["modifyvm", :id, "--ioapic", "on"]

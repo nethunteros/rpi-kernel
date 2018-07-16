@@ -13,7 +13,7 @@ BUILD_ROOT=/var/kernel_build
 BUILD_CACHE=$BUILD_ROOT/cache
 ARM_TOOLS=$BUILD_CACHE/tools
 LINUX_KERNEL=$BUILD_CACHE/linux-kernel
-LINUX_KERNEL_COMMIT=77297f0f1dde7bccadf7c972cba45548d4e6c5d0 # Linux 4.14.50-re4son
+LINUX_KERNEL_COMMIT=a8d70f384111e6a3365cf9d74d4e21043d38c84f   # Linux 4.14.50-re4son
 # LINUX_KERNEL_COMMIT=23e8f07192d2ba4562bd967d8be986f538a7b21b # Linux 4.14.30-re4son
 # LINUX_KERNEL_COMMIT=e8e892a9196be7752844810fa0c9b73c801ef7eb # Linux 4.9.80-re4son
 # LINUX_KERNEL_COMMIT=f70eae405b5d75f7c41ea300b9f790656f99a203 # Linux 4.14.34
@@ -168,15 +168,6 @@ create_kernel_for () {
     ARCH=arm CROSS_COMPILE=${CCPREFIX[$PI_VERSION]} make savedefconfig
     cp $LINUX_KERNEL/defconfig $LINUX_KERNEL_CONFIGS/${PI_VERSION}_docker_defconfig
     return
-  fi
-
-  #4d hats specific (re4son)
-  if [ "$PI_VERSION" == "rpi1" ]; then
-    git checkout $LINUX_KERNEL/drivers/video/4d-hats/compress-v6.o
-  fi
-
-  if [ "$PI_VERSION" == "rpi2_3" ]; then
-   git checkout $LINUX_KERNEL/drivers/video/4d-hats/compress-v7.o
   fi
 
   echo "### building kernel and deb packages"
